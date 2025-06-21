@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧠 Gemini SQL Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .form-section {
+            margin-bottom: 30px;
+        }
+
+        .form-section h2 {
+            font-size: 1.3rem;
+            margin-bottom: 12px;
+            color: #374151;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .input-container {
+            position: relative;
+        }
+
+        textarea, input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+            resize: vertical;
+        }
+
+        textarea:focus, input:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .schema-textarea {
+            height: 120px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 13px;
+        }
+
+        .prompt-input {
+            height: 80px;
+        }
+
+        .sql-output {
+            height: 200px;
+            background-color: #f8fafc;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #1f2937;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 20px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: #e5e7eb;
+            transform: translateY(-1px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-top: 12px;
+            font-size: 14px;
+        }
+
+        .success {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #16a34a;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-top: 12px;
+            font-size: 14px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr;
+                gap: 30px;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .main-content {
+                padding: 20px;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+        }
+
+        .default-schema {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 12px;
+            margin-top: 8px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .copy-success {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #16a34a;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+            z-index: 1000;
+            transform: translateY(-60px);
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .copy-success.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🧠 Gemini SQL Generator</h1>
+            <p>Transform natural language into SQL queries with AI</p>
+        </div>
+
+        <div class="main-content">
+            <div class="grid">
+                <div class="input-section">
+                    <div class="form-section">
+                        <h2>📄 Database Schema</h2>
+                        <div class="form-group">
+                            <label for="schema">JSON Schema (table_name: [columns])</label>
+                            <textarea 
+                                id="schema" 
+                                class="schema-textarea" 
+                                placeholder='{"orders": ["order_id", "customer_id", "order_total", "order_date"], "customers": ["customer_id", "name", "email"]}'
+                            ></textarea>
+                            <div class="default-schema">
+                                <strong>Default Schema:</strong><br>
+                                orders: order_id, customer_id, order_total, order_date<br>
+                                customers: customer_id, name, email
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h2>💬 Natural Language Prompt</h2>
+                        <div class="form-group">
+                            <label for="prompt">Describe what you want to query</label>
+                            <textarea 
+                                id="prompt" 
+                                class="prompt-input" 
+                                placeholder="Find all orders with their customer names for orders over $100"
+                                required
+                            ></textarea>
+                        </div>
+                    </div>
+
+                    <div class="button-group">
+                        <button id="generateBtn" class="btn btn-primary">
+                            <span id="generateText">✨ Generate SQL</span>
+                            <div id="loadingSpinner" class="loading" style="display: none;"></div>
+                        </button>
+                    </div>
+
+                    <div id="errorContainer"></div>
+                </div>
+
+                <div class="output-section">
+                    <div class="form-section">
+                        <h2>🧾 Generated SQL</h2>
+                        <div class="form-group">
+                            <textarea 
+                                id="sqlOutput" 
+                                class="sql-output" 
+                                readonly
+                                placeholder="Your generated SQL will appear here..."
+                            ></textarea>
+                        </div>
+                        <div class="button-group">
+                            <button id="copyBtn" class="btn btn-secondary" disabled>
+                                📋 Copy to Clipboard
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="copySuccess" class="copy-success">
+        ✅ SQL copied to clipboard!
+    </div>
+
+    <script>
+        class SQLGenerator {
+            constructor() {
+                this.initializeElements();
+                this.bindEvents();
+                this.loadDefaultSchema();
+            }
+
+            initializeElements() {
+                this.schemaInput = document.getElementById('schema');
+                this.promptInput = document.getElementById('prompt');
+                this.sqlOutput = document.getElementById('sqlOutput');
+                this.generateBtn = document.getElementById('generateBtn');
+                this.copyBtn = document.getElementById('copyBtn');
+                this.errorContainer = document.getElementById('errorContainer');
+                this.generateText = document.getElementById('generateText');
+                this.loadingSpinner = document.getElementById('loadingSpinner');
+                this.copySuccess = document.getElementById('copySuccess');
+            }
+
+            bindEvents() {
+                this.generateBtn.addEventListener('click', () => this.generateSQL());
+                this.copyBtn.addEventListener('click', () => this.copyToClipboard());
+                this.promptInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                        this.generateSQL();
+                    }
+                });
+                this.sqlOutput.addEventListener('input', () => {
+                    this.copyBtn.disabled = !this.sqlOutput.value.trim();
+                });
+            }
+
+            loadDefaultSchema() {
+                const defaultSchema = {
+                    "orders": ["order_id", "customer_id", "order_total", "order_date"],
+                    "customers": ["customer_id", "name", "email"]
+                };
+                this.schemaInput.value = JSON.stringify(defaultSchema, null, 2);
+            }
+
+            validateSchema(schemaText) {
+                if (!schemaText.trim()) {
+                    throw new Error('Schema cannot be empty');
+                }
+
+                let schema;
+                try {
+                    schema = JSON.parse(schemaText);
+                } catch (e) {
+                    throw new Error('Invalid JSON format in schema');
+                }
+
+                if (typeof schema !== 'object' || schema === null || Array.isArray(schema)) {
+                    throw new Error('Schema must be a JSON object');
+                }
+
+                for (const [tableName, columns] of Object.entries(schema)) {
+                    if (!Array.isArray(columns)) {
+                        throw new Error(`Table "${tableName}" must have an array of columns`);
+                    }
+                    if (columns.length === 0) {
+                        throw new Error(`Table "${tableName}" must have at least one column`);
+                    }
+                }
+
+                return schema;
+            }
+
+            showError(message) {
+                this.errorContainer.innerHTML = `<div class="error">❌ ${message}</div>`;
+                setTimeout(() => {
+                    this.errorContainer.innerHTML = '';
+                }, 5000);
+            }
+
+            showSuccess(message) {
+                this.errorContainer.innerHTML = `<div class="success">✅ ${message}</div>`;
+                setTimeout(() => {
+                    this.errorContainer.innerHTML = '';
+                }, 3000);
+            }
+
+            setLoading(isLoading) {
+                this.generateBtn.disabled = isLoading;
+                if (isLoading) {
+                    this.generateText.style.display = 'none';
+                    this.loadingSpinner.style.display = 'inline-block';
+                } else {
+                    this.generateText.style.display = 'inline';
+                    this.loadingSpinner.style.display = 'none';
+                }
+            }
+
+            async generateSQL() {
+                const prompt = this.promptInput.value.trim();
+                const schemaText = this.schemaInput.value.trim();
+
+                // Clear previous errors
+                this.errorContainer.innerHTML = '';
+
+                // Validate inputs
+                if (!prompt) {
+                    this.showError('Please enter a natural language prompt');
+                    this.promptInput.focus();
+                    return;
+                }
+
+                let schema;
+                try {
+                    schema = this.validateSchema(schemaText);
+                } catch (error) {
+                    this.showError(error.message);
+                    this.schemaInput.focus();
+                    return;
+                }
+
+                this.setLoading(true);
+
+                try {
+                    const response = await fetch('/generate-sql', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            prompt: prompt,
+                            schema: schema
+                        })
+                    });
+
+                    if (!response.ok) {
+                        let errorMessage = `Server error: ${response.status}`;
+                        try {
+                            const errorData = await response.json();
+                            errorMessage = errorData.error || errorMessage;
+                        } catch (e) {
+                            // Use default error message if JSON parsing fails
+                        }
+                        throw new Error(errorMessage);
+                    }
+
+                    const data = await response.json();
+                    
+                    if (!data.sql) {
+                        throw new Error('No SQL returned from server');
+                    }
+
+                    this.sqlOutput.value = data.sql;
+                    this.copyBtn.disabled = false;
+                    this.showSuccess('SQL generated successfully!');
+
+                } catch (error) {
+                    console.error('Error generating SQL:', error);
+                    this.showError(error.message || 'Failed to generate SQL. Please try again.');
+                } finally {
+                    this.setLoading(false);
+                }
+            }
+
+            async copyToClipboard() {
+                const sql = this.sqlOutput.value.trim();
+                if (!sql) return;
+
+                try {
+                    await navigator.clipboard.writeText(sql);
+                    this.showCopySuccess();
+                } catch (error) {
+                    // Fallback for older browsers
+                    try {
+                        this.sqlOutput.select();
+                        document.execCommand('copy');
+                        this.showCopySuccess();
+                    } catch (fallbackError) {
+                        this.showError('Failed to copy to clipboard');
+                    }
+                }
+            }
+
+            showCopySuccess() {
+                this.copySuccess.classList.add('show');
+                setTimeout(() => {
+                    this.copySuccess.classList.remove('show');
+                }, 2000);
+            }
+        }
+
+        // Initialize the application when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            new SQLGenerator();
+        });
+    </script>
+</body>
+</html>
